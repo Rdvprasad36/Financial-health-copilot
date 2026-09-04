@@ -3,7 +3,8 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "build": "prisma generate && tsc -p tsconfig.build.json",
+    "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
+    "build": "pnpm run clean && prisma generate && tsc -p tsconfig.build.json && node -e \"const fs = require('fs'); for (const file of ['dist/main.js', 'dist/app.module.js']) { if (!fs.existsSync(file)) throw new Error('Missing build output: ' + file); }\"",
     "dev": "nest start --watch",
     "start": "nest start",
     "start:prod": "node dist/main.js",
