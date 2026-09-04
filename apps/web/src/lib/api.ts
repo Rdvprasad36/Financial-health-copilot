@@ -122,9 +122,9 @@ export async function postSimulate(params: { userId: string; extraIncomePaise: n
     if (!res.ok) throw new Error('Failed to simulate');
     return await res.json();
   } catch {
-    const extraPaise = BigInt(params.extraIncomePaise || 0);
-    const newTurnover = 164000000n + extraPaise;
-    const proximity = Math.min(100, Math.round((Number(newTurnover) / 200000000) * 100));
+    const extraPaise = Number(params.extraIncomePaise || 0);
+    const newTurnover = 164000000 + extraPaise;
+    const proximity = Math.min(100, Math.round((newTurnover / 200000000) * 100));
     return {
       current: {
         turnoverPaise: '164000000',
@@ -134,7 +134,7 @@ export async function postSimulate(params: { userId: string; extraIncomePaise: n
         totalTaxPaise: '12480000',
       },
       projected: {
-        turnoverPaise: newTurnover.toString(),
+        turnoverPaise: String(newTurnover),
         proximityPct: proximity,
         tier: proximity >= 100 ? 'crossed' : proximity >= 95 ? 'critical' : 'warning',
         projectedCrossDate: proximity >= 100 ? 'Crossed Immediately' : '2026-10-15',
