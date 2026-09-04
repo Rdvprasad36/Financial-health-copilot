@@ -1,0 +1,24 @@
+{
+  "name": "financial-health-copilot",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "test": "turbo test",
+    "lint": "turbo lint",
+    "db:generate": "pnpm --filter api prisma generate",
+    "db:migrate": "pnpm --filter api prisma migrate dev",
+    "db:push": "pnpm --filter api prisma db push",
+    "demo:seed": "pnpm --filter api demo:seed",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down"
+  },
+  "devDependencies": {
+    "turbo": "^2.1.0",
+    "typescript": "^5.5.0"
+  },
+  "packageManager": "pnpm@9.7.0",
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,210 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Users & Business Profile ────────────────────────────────────────
+
+model User {
+  id                   String    @id @default(uuid()) @db.Uuid
+  phone                String?   @unique
+  email                String?
+  fullName             String    @map("full_name")
+  passwordHash         String?   @map("password_hash")
+  businessType         String    @map("business_type") // goods_seller, service_creator, freelancer, mixed
+  stateCode            String    @map("state_code")
+  registeredGst        Boolean   @default(false) @map("registered_gst")
+  gstin                String?
+  presumptiveScheme    String    @default("none") @map("presumptive_scheme") // 44AD, 44ADA, none
+  taxRegime            String    @default("new") @map("tax_regime") // new, old
+  languagePreference   String    @default("en") @map("language_preference") // en, hinglish
+  notificationChannels String[]  @default(["in_app"]) @map("notification_channels")
+  onboardingCompletedAt DateTime? @map("onboarding_completed_at")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  paymentSources       PaymentSource[]
+  transactions         Transaction[]
+  fyRollups            FyRollup[]
+  taxEstimates         TaxEstimate[]
+  gstThresholdStatuses GstThresholdStatus[]
+  safeToSpendSnapshots SafeToSpendSnapshot[]
+  nudges               Nudge[]
+
+  @@map("users")
+}
+
+// ─── Linked Payment Sources ─────────────────────────────────────────
+
+model PaymentSource {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @map("user_id") @db.Uuid
+  provider          String   // razorpay, upi_csv, manual
+  externalAccountId String?  @map("external_account_id")
+  status            String   @default("active") // active, revoked, error
+  lastSyncedAt      DateTime? @map("last_synced_at")
+  credentials       Json?    // encrypted API keys, etc. (JSONB)
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@index([userId])
+  @@map("payment_sources")
+}
+
+// ─── Raw Normalized Transactions ────────────────────────────────────
+
+model Transaction {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  sourceId       String?  @map("source_id") @db.Uuid
+  providerTxnId  String?  @map("provider_txn_id")
+  type           String   // income, expense, refund, payout_fee
+  amountPaise    BigInt   @map("amount_paise")
+  currency       String   @default("INR")
+  category       String?  // auto-categorized: sales, ad_spend, platform_fee, etc.
+  counterparty   String?
+  description    String?
+  txnDate        DateTime @map("txn_date") @db.Date
+  rawPayload     Json?    @map("raw_payload")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  source PaymentSource? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+
+  @@unique([sourceId, providerTxnId]) // idempotent sync
+  @@index([userId, txnDate])
+  @@index([userId, type])
+  @@index([category])
+  @@map("transactions")
+}
+
+// ─── Financial Year Rollups ─────────────────────────────────────────
+
+model FyRollup {
+  id                 String   @id @default(uuid()) @db.Uuid
+  userId             String   @map("user_id") @db.Uuid
+  financialYear      String   @map("financial_year") // e.g. '2025-26'
+  grossTurnoverPaise BigInt   @map("gross_turnover_paise")
+  netIncomePaise     BigInt   @map("net_income_paise")
+  totalExpensesPaise BigInt   @default(0) @map("total_expenses_paise")
+  transactionCount   Int      @default(0) @map("transaction_count")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, financialYear])
+  @@index([userId])
+  @@map("fy_rollups")
+}
+
+// ─── Advance Tax Estimate Snapshots ─────────────────────────────────
+
+model TaxEstimate {
+  id                   String   @id @default(uuid()) @db.Uuid
+  userId               String   @map("user_id") @db.Uuid
+  financialYear        String   @map("financial_year")
+  quarter              String   // Q1, Q2, Q3, Q4
+  dueDate              DateTime @map("due_date") @db.Date
+  estimatedIncomePaise BigInt   @map("estimated_income_paise")
+  estimatedTaxPaise    BigInt   @map("estimated_tax_paise")
+  cumulativePaidPaise  BigInt   @default(0) @map("cumulative_paid_paise")
+  status               String   @default("upcoming") // upcoming, due_soon, overdue, paid_marked
+  configVersion        String   @map("config_version")
+  regime               String   @default("new") // new, old
+  computedAt           DateTime @default(now()) @map("computed_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, financialYear])
+  @@index([status])
+  @@map("tax_estimates")
+}
+
+// ─── GST Threshold Tracking ─────────────────────────────────────────
+
+model GstThresholdStatus {
+  id                        String    @id @default(uuid()) @db.Uuid
+  userId                    String    @map("user_id") @db.Uuid
+  financialYear             String    @map("financial_year")
+  rolling12mTurnoverPaise   BigInt    @map("rolling_12m_turnover_paise")
+  applicableThresholdPaise  BigInt    @map("applicable_threshold_paise")
+  proximityPct              Float     @map("proximity_pct")
+  crossed                   Boolean   @default(false)
+  crossedAt                 DateTime? @map("crossed_at")
+  projectedCrossDate        DateTime? @map("projected_cross_date")
+  computedAt                DateTime  @default(now()) @map("computed_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, financialYear])
+  @@map("gst_threshold_status")
+}
+
+// ─── Safe-to-Spend Snapshots ────────────────────────────────────────
+
+model SafeToSpendSnapshot {
+  id                    String   @id @default(uuid()) @db.Uuid
+  userId                String   @map("user_id") @db.Uuid
+  computedForDate       DateTime @map("computed_for_date") @db.Date
+  smoothedIncomePaise   BigInt   @map("smoothed_income_paise")
+  taxReservePaise       BigInt   @map("tax_reserve_paise")
+  gstReservePaise       BigInt   @map("gst_reserve_paise")
+  platformFeeBufferPaise BigInt  @map("platform_fee_buffer_paise")
+  emergencyBufferPaise  BigInt   @map("emergency_buffer_paise")
+  safeToSpendPaise      BigInt   @map("safe_to_spend_paise")
+  method                String   // ewma_v1, etc.
+  warningFlags          String[] @default([]) @map("warning_flags")
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, computedForDate])
+  @@map("safe_to_spend_snapshots")
+}
+
+// ─── Nudges ─────────────────────────────────────────────────────────
+
+model Nudge {
+  id             String    @id @default(uuid()) @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  type           String    // gst_proximity, advance_tax_due, safe_to_spend_update, low_buffer_warning
+  payload        Json      // Nudge content and context data
+  channel        String    // whatsapp, email, in_app
+  sentAt         DateTime  @default(now()) @map("sent_at")
+  acknowledgedAt DateTime? @map("acknowledged_at")
+  actionTaken    String?   @map("action_taken") // set_aside_confirmed, dismissed, registered_gst, etc.
+  tierKey        String?   @map("tier_key") // for dedup: e.g., "gst_proximity_80"
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@index([userId, sentAt])
+  @@index([tierKey, sentAt])
+  @@map("nudges")
+}
+
+// ─── Human-Approval Actions ─────────────────────────────────────────
+
+model ApprovalAction {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  actionType  String    @map("action_type") // gst_registration, tax_payment, payout
+  payload     Json      // Details of the action
+  status      String    @default("suggested") // suggested, confirmed, executed, rejected
+  suggestedAt DateTime  @default(now()) @map("suggested_at")
+  confirmedAt DateTime? @map("confirmed_at")
+  executedAt  DateTime? @map("executed_at")
+  rejectedAt  DateTime? @map("rejected_at")
+
+  @@index([userId, status])
+  @@map("approval_actions")
+}
