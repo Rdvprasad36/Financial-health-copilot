@@ -47,7 +47,7 @@ export class DashboardService {
       languagePreference: (user.languagePreference as 'en' | 'hinglish') || 'en',
     };
 
-    const domainTxns: Transaction[] = txns.map(t => ({
+    const domainTxns: Transaction[] = txns.map((t: any) => ({
       id: t.id,
       userId: t.userId,
       sourceId: t.sourceId || '',

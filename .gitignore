@@ -5,8 +5,10 @@ node_modules/
 # Build outputs
 dist/
 apps/api/dist/
+packages/shared/dist/
 .next/
 out/
+*.tsbuildinfo
 
 # Environment
 .env

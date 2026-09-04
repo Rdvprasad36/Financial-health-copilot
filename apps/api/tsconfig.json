@@ -21,8 +21,8 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "paths": {
-      "@fhc/shared": ["../../packages/shared/src"],
-      "@fhc/shared/*": ["../../packages/shared/src/*"]
+      "@fhc/shared": ["../../packages/shared/dist"],
+      "@fhc/shared/*": ["../../packages/shared/dist/*"]
     }
   },
   "include": ["src/**/*"],
