@@ -95,7 +95,7 @@ export class AdvanceTaxService {
     const schedule = presumptiveScheme === 'none' ? ADVANCE_TAX_SCHEDULE : PRESUMPTIVE_TAX_SCHEDULE;
     const startYear = parseInt(financialYear.split('-')[0], 10);
     
-    const instalments: AdvanceTaxInstalment[] = schedule.map(entry => {
+    const instalments: AdvanceTaxInstalment[] = schedule.map((entry: any) => {
       const year = entry.dueMonth < 4 ? startYear + 1 : startYear;
       const dueDate = `${year}-${entry.dueMonth.toString().padStart(2, '0')}-${entry.dueDay.toString().padStart(2, '0')}`;
       return {

@@ -86,7 +86,7 @@ export class ComplianceController {
     });
 
     if (dbEstimates.length > 0) {
-      return dbEstimates.map(e => ({
+      return dbEstimates.map((e: any) => ({
         quarter: e.quarter,
         dueDate: e.dueDate.toISOString().split('T')[0],
         estimatedIncomePaise: e.estimatedIncomePaise.toString(),
