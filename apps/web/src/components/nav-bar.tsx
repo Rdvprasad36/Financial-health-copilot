@@ -27,7 +27,7 @@ export function NavBar() {
       <header className="sticky top-0 z-40 w-full border-b border-white/60 bg-white/70 backdrop-blur-xl">
         <div className="max-w-6xl mx-auto flex h-14 items-center justify-between px-4 sm:px-8">
           <Link href="/dashboard" className="flex items-center gap-2 font-bold text-sm sm:text-base">
-            <div className="rounded-xl bg-gradient-to-br from-violet-600 to-indigo-500 p-1.5 text-primary-foreground shadow-lg shadow-violet-500/25">
+            <div className="rounded-xl bg-gradient-to-br from-blue-600 to-sky-500 p-1.5 text-primary-foreground shadow-lg shadow-blue-500/25">
               <Shield className="h-4 w-4" />
             </div>
             <span>
@@ -47,8 +47,8 @@ export function NavBar() {
                   className={cn(
                     'flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all duration-200',
                     isActive
-                      ? 'bg-violet-100 text-violet-800 font-semibold shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-violet-50'
+                      ? 'bg-blue-100 text-blue-800 font-semibold shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-blue-50'
                   )}
                 >
                   <Icon className="h-4 w-4" />
