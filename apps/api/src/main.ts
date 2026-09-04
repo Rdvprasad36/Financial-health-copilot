@@ -26,6 +26,10 @@ async function bootstrap() {
     }),
   );
 
+  app.getHttpAdapter().get('/api/health', (_request, response) => {
+    response.status(200).json({ status: 'ok' });
+  });
+
   const port = process.env.PORT || 4000;
   await app.listen(port);
   console.log(`🚀 Financial Health Copilot API running on http://localhost:${port}`);
