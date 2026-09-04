@@ -3,10 +3,10 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "prisma generate && tsc -p tsconfig.build.json",
     "dev": "nest start --watch",
     "start": "nest start",
-    "start:prod": "node dist/src/main.js",
+    "start:prod": "node dist/main.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "lint": "tsc --noEmit",
