@@ -51,16 +51,18 @@ Respond in under 120 words.`;
     }
 
     try {
-      const response = await this.openai.responses.create({
-        model: this.configService.get<string>('OPENAI_MODEL') || 'gpt-4.1-mini',
-        instructions: systemPrompt,
-        input: JSON.stringify(input),
-        max_output_tokens: 300,
+      const response = await this.openai.chat.completions.create({
+        model: this.configService.get<string>('OPENAI_MODEL') || 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: JSON.stringify(input) },
+        ],
+        max_tokens: 300,
       });
 
-      return response.output_text || '';
+      return response.choices[0]?.message?.content || `Safe to spend is ₹${safeRupees.toLocaleString('en-IN')} after reserving ₹${taxRupees.toLocaleString('en-IN')} for advance tax. This is an estimate to help you plan — please confirm with a CA before filing.`;
     } catch (error) {
-      this.logger.error('Failed to generate explanation', error);
+      this.logger.warn('OpenAI explainer failed or quota reached, using deterministic summary', error);
       return `Safe to spend is ₹${safeRupees.toLocaleString('en-IN')} after reserving ₹${taxRupees.toLocaleString('en-IN')} for advance tax. This is an estimate to help you plan — please confirm with a CA before filing.`;
     }
   }

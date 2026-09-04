@@ -31,16 +31,18 @@ End with a clear call-to-action.`;
     }
 
     try {
-      const response = await this.openai.responses.create({
-        model: this.configService.get<string>('OPENAI_MODEL') || 'gpt-4.1-mini',
-        instructions: systemPrompt,
-        input: JSON.stringify({ type, data }),
-        max_output_tokens: 150,
+      const response = await this.openai.chat.completions.create({
+        model: this.configService.get<string>('OPENAI_MODEL') || 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: JSON.stringify({ type, data }) },
+        ],
+        max_tokens: 150,
       });
 
-      return response.output_text || '';
+      return response.choices[0]?.message?.content || this.getMockNudge(type, data);
     } catch (error) {
-      this.logger.error('Failed to generate nudge copy', error);
+      this.logger.warn('OpenAI nudge copy failed, using fallback', error);
       return this.getMockNudge(type, data);
     }
   }

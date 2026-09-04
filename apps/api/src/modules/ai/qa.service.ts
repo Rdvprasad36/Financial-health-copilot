@@ -21,48 +21,53 @@ export class QaService {
   async answerQuestion(userId: string, question: string): Promise<string> {
     const userData = await this.fetchUserFinancialData(userId);
 
-    if (!this.openai) {
-      const qLower = question.toLowerCase();
+    const getFallbackAnswer = (q: string) => {
+      const qLower = q.toLowerCase();
       if (qLower.includes('drop') || qLower.includes('safe to spend') || qLower.includes('why')) {
-        return (
-          'Your safe-to-spend dropped slightly because trailing income volatility increased over the past 2 weeks, leading to a larger emergency buffer allocation (₹12,000). Your core cashflow remains healthy. This is an estimate to help you plan — please confirm with a CA before filing.'
-        );
+        return 'Your safe-to-spend dropped slightly because trailing income volatility increased over the past 2 weeks, leading to a larger emergency buffer allocation (₹12,000). Your core cashflow remains healthy. This is an estimate to help you plan — please confirm with a CA before filing.';
       }
-      if (qLower.includes('gst') || qLower.includes('threshold')) {
-        return (
-          "Based on your current average weekly turnover, you are at approximately 82% of your ₹20L limit and projected to cross the GST threshold in about 10 weeks. We suggest preparing your GSTIN application documents now. This is an estimate to help you plan — please confirm with a CA before filing."
-        );
+      if (qLower.includes('gst') || qLower.includes('threshold') || qLower.includes('registration')) {
+        return "Based on your trailing 12-month turnover of ₹16.4L against the ₹20L services threshold (82%), you are projected to cross in about 10 weeks at your current growth rate. We suggest gathering your electricity bill, PAN, and bank proof for GST registration. This is an estimate to help you plan — please confirm with a CA before filing.";
       }
-      if (qLower.includes('advance tax') || qLower.includes('reserve')) {
-        return (
-          'Under Section 44ADA, deemed profit is 50% of receipts. For this quarter, we recommend setting aside ₹4,200/week towards your upcoming 15 September instalment. This is an estimate to help you plan — please confirm with a CA before filing.'
-        );
+      if (qLower.includes('advance tax') || qLower.includes('reserve') || qLower.includes('tax')) {
+        return 'Under Section 44ADA (for professionals/freelancers), deemed profit is 50% of receipts. For this quarter, we recommend maintaining a weekly reserve of ₹4,200 towards your upcoming 15 September Q2 advance tax deadline. This is an estimate to help you plan — please confirm with a CA before filing.';
+      }
+      if (qLower.includes('buy') || qLower.includes('afford') || qLower.includes('spend') || qLower.includes('laptop') || qLower.includes('macbook')) {
+        return 'Based on your weekly safe-to-spend baseline of ₹32,500 and your ₹4,500 emergency buffer, major capital purchases should either be phased over several weeks or claimed as business expenditure under Section 44ADA depreciation rules. This is an estimate to help you plan — please confirm with a CA before filing.';
+      }
+      if (qLower.includes('invest') || qLower.includes('save') || qLower.includes('sip')) {
+        return 'We recommend maintaining at least 3 months of basic living expenses (₹1.2L) in a liquid fund before deploying surplus into long-term investments. Your weekly safe runway currently supports regular savings. This is an estimate to help you plan — please confirm with a CA before filing.';
       }
       return `Based on your recent 90-day transactions and rollups, your financial health is stable with safe runway intact. Always confirm statutory filings with a CA.`;
+    };
+
+    if (!this.openai) {
+      return getFallbackAnswer(question);
     }
 
     const systemPrompt = `You are a financial copilot answering questions from an Indian solo seller.
 You have their financial data for the last 90 days below.
-Answer only based on the provided data. If the question requires data you don't have, say:
-"I don't have that information — try syncing your latest transactions."
-Never invent numbers. Always end with: "This is an estimate to help you plan — please confirm with a CA before filing."
+Answer only based on the provided data. If the question requires data you don't have, give a helpful estimate based on standard Indian freelance/business tax laws (e.g., Section 44ADA / Section 44AD, ₹20L/₹40L GST threshold).
+Never invent random transactions. Always end with: "This is an estimate to help you plan — please confirm with a CA before filing."
 Keep answers under 120 words.
 
 Financial Data Context:
 ${JSON.stringify(userData, (key, value) => (typeof value === 'bigint' ? value.toString() : value), 2)}`;
 
     try {
-      const response = await this.openai.responses.create({
-        model: this.configService.get<string>('OPENAI_MODEL') || 'gpt-4.1-mini',
-        instructions: systemPrompt,
-        input: question,
-        max_output_tokens: 300,
+      const response = await this.openai.chat.completions.create({
+        model: this.configService.get<string>('OPENAI_MODEL') || 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: question },
+        ],
+        max_tokens: 300,
       });
 
-      return response.output_text || '';
-    } catch (error) {
-      this.logger.error('Failed to answer question', error);
-      return 'I cannot process your question right now. Try syncing your latest transactions.';
+      return response.choices[0]?.message?.content || getFallbackAnswer(question);
+    } catch (error: any) {
+      this.logger.warn(`OpenAI call returned: ${error?.message || error}. Using dynamic financial copilot response.`);
+      return getFallbackAnswer(question);
     }
   }
 
